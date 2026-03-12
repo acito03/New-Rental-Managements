@@ -42,7 +42,12 @@ docker-compose up -d --build
 docker-compose exec app npx prisma migrate deploy
 docker-compose exec app npx prisma db seed
 ```
-
+```bash
+docker-compose exec app npx prisma@5 db push
+docker-compose exec app npx tsx prisma/seed.ts
+docker-compose exec app npx prisma@5 migrate deploy
+docker-compose exec app npx prisma@5 db seed
+```
 ### 4. Login
 
 Open `http://YOUR_NAS_IP:3000` and log in with:
