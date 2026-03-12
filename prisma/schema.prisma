@@ -1,0 +1,143 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+enum InventoryStatus {
+  OK
+  MAINTENANCE
+  OUT
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          Role      @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  requests      Request[]
+  transactions  Transaction[] @relation("AdminTransactions")
+
+  @@map("users")
+}
+
+model BrandType {
+  id          String      @id @default(cuid())
+  brand       String
+  type        String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  inventory   Inventory[]
+
+  @@unique([brand, type])
+  @@map("brand_types")
+}
+
+model Inventory {
+  id              String          @id @default(cuid())
+  brandTypeId     String
+  modelVariant    String
+  serialNumber    String?
+  shortDescription String?
+  status          InventoryStatus @default(OK)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  brandType       BrandType       @relation(fields: [brandTypeId], references: [id])
+  requestItems    RequestItem[]
+  transactionItems TransactionItem[]
+
+  @@map("inventory")
+}
+
+model Request {
+  id          String        @id @default(cuid())
+  userId      String
+  clientName  String
+  purpose     String?
+  status      RequestStatus @default(PENDING)
+  notes       String?
+  reviewedBy  String?
+  reviewedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id])
+  items       RequestItem[]
+  transaction Transaction?
+
+  @@map("requests")
+}
+
+model RequestItem {
+  id          String    @id @default(cuid())
+  requestId   String
+  inventoryId String
+  startDate   DateTime
+  endDate     DateTime
+  quantity    Int       @default(1)
+
+  request     Request   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+
+  @@map("request_items")
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  requestId   String?           @unique
+  adminId     String
+  clientName  String
+  purpose     String?
+  notes       String?
+  month       Int               // 1-12
+  year        Int
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  request     Request?          @relation(fields: [requestId], references: [id])
+  admin       User              @relation("AdminTransactions", fields: [adminId], references: [id])
+  items       TransactionItem[]
+
+  @@index([month, year])
+  @@map("transactions")
+}
+
+model TransactionItem {
+  id              String      @id @default(cuid())
+  transactionId   String
+  inventoryId     String
+  startDate       DateTime
+  endDate         DateTime
+  returned        Boolean     @default(false)
+  returnDate      DateTime?
+  quantity        Int         @default(1)
+
+  transaction     Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  inventory       Inventory   @relation(fields: [inventoryId], references: [id])
+
+  @@map("transaction_items")
+}
